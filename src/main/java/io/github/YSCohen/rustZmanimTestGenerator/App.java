@@ -169,6 +169,7 @@ public class App {
                 .replace("tfila", "tefila")
                 .replace("plag_hamincha", "plag")
                 .replace("bain", "bein")
+                .replace("tzais", "tzeis")
                 .replace("le_mincha", "lemincha")
                 .replace("solar_midnight", "chatzos_halayla")
                 .replace("plag_alos_to_sunset", "plag_alos_16_1_degrees_to_sunset")
