@@ -75,10 +75,10 @@ public class App {
                                 ];
 
                                 for (czc, edt) in zip(cals, expected_datetime_strs) {
-                                    let result = match czc.%s() {
-                                        Some(dt) => dt.format("%s").to_string(),
-                                        None => String::from("None"),
-                                    };
+                                    let result = czc.%s().map_or_else(
+                                        || String::from("None"),
+                                        |dt| dt.format("%s").to_string(),
+                                    );
                                     assert_eq!(result, edt)
                                 }
                             }
