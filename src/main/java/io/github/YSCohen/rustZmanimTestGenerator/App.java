@@ -2,13 +2,12 @@ package io.github.YSCohen.rustZmanimTestGenerator;
 
 import java.lang.reflect.Method;
 import java.util.Calendar;
-import java.util.TimeZone;
 import java.util.Date;
-
-import com.kosherjava.zmanim.util.GeoLocation;
-import com.kosherjava.zmanim.ComprehensiveZmanimCalendar;
+import java.util.TimeZone;
 
 import com.google.common.base.CaseFormat;
+import com.kosherjava.zmanim.ComprehensiveZmanimCalendar;
+import com.kosherjava.zmanim.util.GeoLocation;
 
 public class App {
     public static void main(String[] args) {
@@ -45,8 +44,8 @@ public class App {
 
     private static void generateSingleZmanTest(GeoLocation[] locs, Method method, boolean useElevation) {
         try {
-            String[] results = new String[6];
-            for (int i = 0; i < 6; i++) {
+            String[] results = new String[9];
+            for (int i = 0; i < 9; i++) {
                 Calendar cal = Calendar.getInstance(locs[i].getTimeZone());
                 cal.set(2017, Calendar.OCTOBER, 17, 0, 0, 0);
                 ComprehensiveZmanimCalendar czcOfLocation = new ComprehensiveZmanimCalendar(locs[i]);
@@ -64,8 +63,11 @@ public class App {
 
                             #[test]
                             fn test_%s() {
-                                let cals = test_helper::basic_location_czcs(%b);
+                                let cals = test_helper::more_locations_czcs(%b);
                                 let expected_datetime_strs = [
+                                    "%s",
+                                    "%s",
+                                    "%s",
                                     "%s",
                                     "%s",
                                     "%s",
@@ -86,6 +88,9 @@ public class App {
                     modifiedName, useElevation, results[0], results[1],
                     results[2], results[3], results[4],
                     results[5].replace("GMT+14:00", "+14").replace("WSDT", "+14"),
+                    results[6].replace("GMT+12:00", "+12"),
+                    results[7].replace("HADT", "HDT"),
+                    results[8].replace("GMT-11:00", "-11"),
                     modifiedName, "%Y-%m-%d %H:%M:%S %Z");
         } catch (Exception e) {
             System.out.println("\n// Could not invoke " + method.getName());
@@ -105,7 +110,13 @@ public class App {
                 TimeZone.getTimeZone("Asia/Tokyo"));
         GeoLocation arctic_nunavut = new GeoLocation("AN", 81.7449398, -64.7945858, 127,
                 TimeZone.getTimeZone("America/Toronto"));
-        GeoLocation[] locs = { lakewood, jerusalem, los_angeles, tokyo, arctic_nunavut, samoa };
+        GeoLocation fiji = new GeoLocation("FJ", -17.633056, 178.016667, 1324,
+                TimeZone.getTimeZone("Pacific/Fiji"));
+        GeoLocation honolulu = new GeoLocation("HU", 21.466667, -157.966667, 10,
+                TimeZone.getTimeZone("America/Adak"));
+        GeoLocation niue = new GeoLocation("NI", -19.053006, -169.859199, 75,
+                TimeZone.getTimeZone("Pacific/Niue"));
+        GeoLocation[] locs = { lakewood, jerusalem, los_angeles, tokyo, arctic_nunavut, samoa, fiji, honolulu, niue };
         return locs;
     }
 
