@@ -139,6 +139,8 @@ public class GenerateCzcTests {
                 .replace("alos_16_1_to", "alos_16_1_degrees_to")
                 .replace("greaterthan", "greater_than")
                 .replace("gedola_greater", "gedola_gra_greater")
+                .replace("sunrise_with_elevation", "elevation_sunrise")
+                .replace("sunset_with_elevation", "elevation_sunset")
                 .replace("hashemashos", "hashmashos");
     }
 }
