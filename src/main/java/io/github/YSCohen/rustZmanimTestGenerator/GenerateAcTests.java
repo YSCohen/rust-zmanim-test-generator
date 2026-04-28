@@ -1,8 +1,8 @@
 package io.github.YSCohen.rustZmanimTestGenerator;
 
 import java.lang.reflect.Method;
-import java.util.Calendar;
-import java.util.Date;
+import java.time.Instant;
+import java.time.LocalDate;
 
 import com.kosherjava.zmanim.AstronomicalCalendar;
 import com.kosherjava.zmanim.util.GeoLocation;
@@ -22,9 +22,9 @@ public class GenerateAcTests {
                 //! [astronomical_calculator](rust_zmanim::astronomical_calculator)
 
                 mod test_helper;
-                use std::iter::zip;
                 use jiff::civil;
                 use rust_zmanim::astronomical_calculator;
+                use std::iter::zip;
                 """);
 
         GeoLocation[] locs = Helpers.getLocs();
@@ -41,16 +41,15 @@ public class GenerateAcTests {
 
     private static void generateSingleTest(GeoLocation[] locs, String javaMethodName, String rustFnName) {
         try {
-            String[] results = new String[9];
-            for (int i = 0; i < 9; i++) {
-                Calendar cal = Calendar.getInstance(locs[i].getTimeZone());
-                cal.set(2017, Calendar.OCTOBER, 17, 0, 0, 0);
+            String[] results = new String[locs.length];
+            LocalDate ld = LocalDate.of(2017, 10, 17);
+            for (int i = 0; i < locs.length; i++) {
                 AstronomicalCalendar acOfLocation = new AstronomicalCalendar(locs[i]);
-                acOfLocation.setCalendar(cal);
+                acOfLocation.setLocalDate(ld);
 
                 Method method = acOfLocation.getClass().getMethod(javaMethodName, new Class<?>[0]);
-                Date value = (Date) method.invoke(acOfLocation);
-                results[i] = Helpers.formatDate(value, locs[i].getTimeZone(), "yyyy-MM-dd HH:mm:ss.SSS z");
+                Instant value = (Instant) method.invoke(acOfLocation);
+                results[i] = Helpers.formatDate(value, locs[i].getZoneId(), "yyyy-MM-dd HH:mm:ss.SSS z");
             }
 
             System.out.printf(
@@ -89,7 +88,7 @@ public class GenerateAcTests {
                     results[8].replace("GMT-11:00", "-11"),
                     rustFnName, "%Y-%m-%d %H:%M:%S.%3f %Z");
         } catch (Exception e) {
-            System.out.println("\n// Could not invoke " + javaMethodName);
+            System.out.println("\n// Could not invoke " + javaMethodName + " because " + e.getMessage());
         }
     }
 }

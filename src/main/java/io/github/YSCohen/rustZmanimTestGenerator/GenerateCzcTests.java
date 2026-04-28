@@ -1,8 +1,8 @@
 package io.github.YSCohen.rustZmanimTestGenerator;
 
 import java.lang.reflect.Method;
-import java.util.Calendar;
-import java.util.Date;
+import java.time.Instant;
+import java.time.LocalDate;
 
 import com.google.common.base.CaseFormat;
 import com.kosherjava.zmanim.ComprehensiveZmanimCalendar;
@@ -35,22 +35,23 @@ public class GenerateCzcTests {
         for (Method method : methods) {
             if (isZmanGetter(method)) {
                 generateSingleZmanTest(locs, method, useElevation);
+            } else {
+                System.out.println("// Skipped " + method.getName());
             }
         }
     }
 
     private static void generateSingleZmanTest(GeoLocation[] locs, Method method, boolean useElevation) {
         try {
-            String[] results = new String[9];
-            for (int i = 0; i < 9; i++) {
-                Calendar cal = Calendar.getInstance(locs[i].getTimeZone());
-                cal.set(2017, Calendar.OCTOBER, 17, 0, 0, 0);
+            String[] results = new String[locs.length];
+            LocalDate ld = LocalDate.of(2017, 10, 17);
+            for (int i = 0; i < locs.length; i++) {
                 ComprehensiveZmanimCalendar czcOfLocation = new ComprehensiveZmanimCalendar(locs[i]);
-                czcOfLocation.setCalendar(cal);
+                czcOfLocation.setLocalDate(ld);
                 czcOfLocation.setUseElevation(useElevation);
 
-                Date value = (Date) method.invoke(czcOfLocation);
-                results[i] = Helpers.formatDate(value, locs[i].getTimeZone(), "yyyy-MM-dd HH:mm:ss z");
+                Instant value = (Instant) method.invoke(czcOfLocation);
+                results[i] = Helpers.formatDate(value, locs[i].getZoneId(), "yyyy-MM-dd HH:mm:ss z");
             }
 
             String modifiedName = transformMethodName(method.getName());
@@ -90,14 +91,14 @@ public class GenerateCzcTests {
                     results[8].replace("GMT-11:00", "-11"),
                     modifiedName, "%Y-%m-%d %H:%M:%S %Z");
         } catch (Exception e) {
-            System.out.println("\n// Could not invoke " + method.getName());
+            System.out.println("\n// Could not invoke " + method.getName() + " because " + e.getMessage());
         }
     }
 
     private static boolean isZmanGetter(Method method) {
         return method.getName().startsWith("get")
                 && method.getParameterCount() == 0
-                && Date.class.equals(method.getReturnType())
+                && Instant.class.equals(method.getReturnType())
                 && !method.getName().equals("getClass")
                 && !method.getName().equals("getSunset")
                 && !method.getName().equals("getSunrise")

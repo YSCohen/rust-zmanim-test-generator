@@ -1,7 +1,7 @@
 package io.github.YSCohen.rustZmanimTestGenerator;
 
 import java.lang.reflect.Method;
-import java.util.Calendar;
+import java.time.LocalDate;
 
 import com.google.common.base.CaseFormat;
 import com.kosherjava.zmanim.ComprehensiveZmanimCalendar;
@@ -58,12 +58,11 @@ public class GenerateCzcShaahTests {
 
     private static void generateSingleZmanTest(GeoLocation[] locs, Method method, boolean useElevation) {
         try {
-            String[] results = new String[9];
-            for (int i = 0; i < 9; i++) {
-                Calendar cal = Calendar.getInstance(locs[i].getTimeZone());
-                cal.set(2017, Calendar.OCTOBER, 17, 0, 0, 0);
+            String[] results = new String[locs.length];
+            LocalDate ld = LocalDate.of(2017, 10, 17);
+            for (int i = 0; i < locs.length; i++) {
                 ComprehensiveZmanimCalendar czcOfLocation = new ComprehensiveZmanimCalendar(locs[i]);
-                czcOfLocation.setCalendar(cal);
+                czcOfLocation.setLocalDate(ld);
                 czcOfLocation.setUseElevation(useElevation);
 
                 long value = (long) method.invoke(czcOfLocation);
@@ -103,7 +102,7 @@ public class GenerateCzcShaahTests {
                     results[5], results[6], results[7], results[8],
                     modifiedName);
         } catch (Exception e) {
-            System.out.println("\n// Could not invoke " + method.getName());
+            System.out.println("\n// Could not invoke " + method.getName() + " because " + e.getMessage());
         }
     }
 
@@ -121,7 +120,8 @@ public class GenerateCzcShaahTests {
                 .replaceAll("zmanis_(\\d)", "zmanis_mga_$1")
                 // .replaceAll("(\\d)$", "$1_minutes")
                 .replace("_point", "")
-                .replace("tzais", "tzeis");
+                .replace("tzais", "tzeis")
+                .replace("g_r_a", "gra");
     }
 
     private static String optionLong(long v) {
