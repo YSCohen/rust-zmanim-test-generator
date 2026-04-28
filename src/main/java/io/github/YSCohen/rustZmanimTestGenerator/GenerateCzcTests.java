@@ -30,10 +30,8 @@ public class GenerateCzcTests {
         Method[] methods = new ComprehensiveZmanimCalendar().getClass().getMethods();
 
         for (Method method : methods) {
-            if (isZmanGetter(method)) {
+            if (isZmanGetter(method)) { // if skipped, isZmanGetter will print why
                 generateSingleZmanTest(locs, method, useElevation);
-            } else {
-                System.out.println("// Skipped " + method.getName());
             }
         }
     }
@@ -89,28 +87,56 @@ public class GenerateCzcTests {
     }
 
     private static boolean isZmanGetter(Method method) {
-        return method.getName().startsWith("get")
-                && method.getParameterCount() == 0
-                && Instant.class.equals(method.getReturnType())
-                && !method.getName().equals("getClass")
-                && !method.getName().equals("getSunset")
-                && !method.getName().equals("getSunrise")
-                && !method.getName().equals("getSeaLevelSunset")
-                && !method.getName().equals("getSeaLevelSunrise")
-                && !method.getName().equals("getAlosHashachar")
-                && !method.getName().equals("getTzais")
-                && !method.getName().equals("getMinchaGedola")
-                && !method.getName().equals("getMinchaKetana")
-                && !method.getName().equals("getPlagHamincha")
-                && !method.getName().equals("getSofZmanShmaMGA")
-                && !method.getName().equals("getCandleLighting")
-                && !method.getName().equals("getSofZmanTfilaMGA")
-                && !method.getName().equals("getChatzosAsHalfDay")
-                && !method.getName().contains("Mol")
-                && !method.getName().contains("Levana")
-                && !method.getName().contains("Chametz")
-                && !method.getName().contains("Twilight")
-                && !method.getName().contains("Transit");
+        if (!method.getName().startsWith("get")) {
+            System.out.println("\n// Skipped " + method.getName() + " because it isn't a getter");
+            return false;
+        }
+
+        if (method.getParameterCount() != 0) {
+            System.out.println("\n// Skipped " + method.getName() + " because it takes parameters");
+            return false;
+        }
+
+        if (!Instant.class.equals(method.getReturnType())) {
+            System.out.println("\n// Skipped " + method.getName() + " because it doesn't return an Instant");
+            return false;
+
+        }
+
+        if (method.getName().equals("getClass")
+                || method.getName().equals("getSunset")
+                || method.getName().equals("getSunrise")
+                || method.getName().equals("getSeaLevelSunset")
+                || method.getName().equals("getSeaLevelSunrise")
+                || method.getName().equals("getAlosHashachar")
+                || method.getName().equals("getTzais")
+                || method.getName().equals("getMinchaGedola")
+                || method.getName().equals("getMinchaKetana")
+                || method.getName().equals("getPlagHamincha")
+                || method.getName().equals("getSofZmanShmaMGA")
+                || method.getName().equals("getCandleLighting")
+                || method.getName().equals("getSofZmanTfilaMGA")
+                || method.getName().equals("getChatzosAsHalfDay")) {
+            System.out.println(
+                    "\n// Skipped " + method.getName() + " because it is one of the explicitly excluded methods");
+            return false;
+        }
+
+        if (method.getName().contains("Mol") || method.getName().contains("Levana")) {
+            System.out.println(
+                    "\n// Skipped " + method.getName() + " because this library doesn't calculate molados (yet?)");
+            return false;
+        }
+
+        if (method.getName().contains("Chametz")
+                || method.getName().contains("Twilight")
+                || method.getName().contains("Transit")) {
+            System.out.println(
+                    "\n// Skipped " + method.getName() + " because it contains a phrase which was explicitly excluded");
+            return false;
+        }
+
+        return true;
     }
 
     private static String transformMethodName(String methodName) {
