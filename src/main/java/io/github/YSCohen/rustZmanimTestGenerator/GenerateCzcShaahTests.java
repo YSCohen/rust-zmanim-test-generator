@@ -72,7 +72,7 @@ public class GenerateCzcShaahTests {
                     """
 
                             #[test]
-                            fn %s() {
+                            fn test_%s() {
                                 let cals = test_helper::more_locations_czcs(%b);
                                 let expected_datetime_strs = [
                                     %s,
