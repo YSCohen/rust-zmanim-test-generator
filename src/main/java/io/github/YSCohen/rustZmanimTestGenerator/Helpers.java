@@ -8,54 +8,101 @@ import java.time.format.DateTimeFormatter;
 import com.kosherjava.zmanim.util.GeoLocation;
 
 public class Helpers {
-        protected static GeoLocation[] getLocs() {
-                GeoLocation lakewood = new GeoLocation("LW", 40.0721087, -74.2400243, 15,
-                                ZoneId.of("America/New_York"));
+    protected static GeoLocation[] getLocs() {
+        GeoLocation lakewood = new GeoLocation(
+                "LW",
+                40.0721087,
+                -74.2400243,
+                15,
+                ZoneId.of("America/New_York"));
 
-                GeoLocation samoa = new GeoLocation("SM", -13.8599098, -171.8031745, 1858,
-                                ZoneId.of("Pacific/Apia"));
+        GeoLocation samoa = new GeoLocation(
+                "SM",
+                -13.8599098,
+                -171.8031745,
+                1858,
+                ZoneId.of("Pacific/Apia"));
 
-                GeoLocation jerusalem = new GeoLocation("JM", 31.7781161, 35.233804, 740.0,
-                                ZoneId.of("Asia/Jerusalem"));
+        GeoLocation jerusalem = new GeoLocation(
+                "JM",
+                31.7781161,
+                35.233804,
+                740.0,
+                ZoneId.of("Asia/Jerusalem"));
 
-                GeoLocation los_angeles = new GeoLocation("LA", 34.0201613, -118.6919095, 71,
-                                ZoneId.of("America/Los_Angeles"));
+        GeoLocation los_angeles = new GeoLocation(
+                "LA",
+                34.0201613,
+                -118.6919095,
+                71,
+                ZoneId.of("America/Los_Angeles"));
 
-                GeoLocation tokyo = new GeoLocation("TK", 35.6733227, 139.6403486, 40,
-                                ZoneId.of("Asia/Tokyo"));
+        GeoLocation tokyo = new GeoLocation(
+                "TK",
+                35.6733227,
+                139.6403486,
+                40,
+                ZoneId.of("Asia/Tokyo"));
 
-                GeoLocation arctic_nunavut = new GeoLocation("AN", 81.7449398, -64.7945858, 127,
-                                ZoneId.of("America/Toronto"));
+        GeoLocation arctic_nunavut = new GeoLocation(
+                "AN",
+                81.7449398,
+                -64.7945858,
+                127,
+                ZoneId.of("America/Toronto"));
 
-                GeoLocation fiji = new GeoLocation("FJ", -17.633056, 178.016667, 1324,
-                                ZoneId.of("Pacific/Fiji"));
+        GeoLocation fiji = new GeoLocation(
+                "FJ",
+                -17.633056,
+                178.016667,
+                1324,
+                ZoneId.of("Pacific/Fiji"));
 
-                GeoLocation honolulu = new GeoLocation("HU", 21.466667, -157.966667, 10,
-                                ZoneId.of("America/Adak"));
+        GeoLocation honolulu = new GeoLocation(
+                "HU",
+                21.466667,
+                -157.966667,
+                10,
+                ZoneId.of("America/Adak"));
 
-                GeoLocation niue = new GeoLocation("NI", -19.053006, -169.859199, 75,
-                                ZoneId.of("Pacific/Niue"));
+        GeoLocation niue = new GeoLocation(
+                "NI",
+                -19.053006,
+                -169.859199,
+                75,
+                ZoneId.of("Pacific/Niue"));
 
-                GeoLocation[] locs = { lakewood, jerusalem, los_angeles, tokyo, arctic_nunavut, samoa, fiji, honolulu,
-                                niue };
-                return locs;
+        return new GeoLocation[] {
+                lakewood,
+                jerusalem,
+                los_angeles,
+                tokyo,
+                arctic_nunavut,
+                samoa,
+                fiji,
+                honolulu,
+                niue
+        };
+    }
+
+    protected static String formatDate(Instant instant, ZoneId zoneId, String pattern) {
+        if (instant == null) {
+            return "None";
+        } else {
+            ZonedDateTime zdt = instant.atZone(zoneId);
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern(pattern);
+            return zdt.format(formatter)
+                    .replace("GMT+14:00", "+14").replace("WSDT", "+14")
+                    .replace("GMT+12:00", "+12").replace("HADT", "HDT")
+                    .replace("GMT-11:00", "-11");
         }
+    }
 
-        protected static String formatDate(Instant instant, ZoneId zoneId, String pattern) {
-                if (instant == null) {
-                        return "None";
-                } else {
-                        ZonedDateTime zdt = instant.atZone(zoneId);
-                        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(pattern);
-                        return zdt.format(formatter);
-                }
-        }
-
-        public static void printHeader() {
-                System.out.println("""
-                                // Generated by rust-zmanim-test-generator
-                                // https://github.com/YSCohen/rust-zmanim-test-generator
-                                // This file is part of rust-zmanim, licensed under LGPL-2.1
-                                """);
-        }
+    public static void printHeader() {
+        System.out.println("""
+                // Generated by rust-zmanim-test-generator
+                // https://github.com/YSCohen/rust-zmanim-test-generator
+                // This file is part of rust-zmanim, licensed under LGPL-2.1
+                """);
+    }
 }

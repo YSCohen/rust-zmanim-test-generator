@@ -80,12 +80,8 @@ public class GenerateCzcTests {
                                 }
                             }
                             """,
-                    modifiedName, useElevation, results[0], results[1],
-                    results[2], results[3], results[4],
-                    results[5].replace("GMT+14:00", "+14").replace("WSDT", "+14"),
-                    results[6].replace("GMT+12:00", "+12"),
-                    results[7].replace("HADT", "HDT"),
-                    results[8].replace("GMT-11:00", "-11"),
+                    modifiedName, useElevation, results[0], results[1], results[2],
+                    results[3], results[4], results[5], results[6], results[7], results[8],
                     modifiedName, "%Y-%m-%d %H:%M:%S %Z");
         } catch (Exception e) {
             System.out.println("\n// Could not invoke " + method.getName() + " because " + e.getMessage());

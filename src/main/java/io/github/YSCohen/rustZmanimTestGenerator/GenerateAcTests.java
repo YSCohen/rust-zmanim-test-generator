@@ -77,12 +77,8 @@ public class GenerateAcTests {
                                 }
                             }
                             """,
-                    rustFnName, results[0], results[1],
-                    results[2], results[3], results[4],
-                    results[5].replace("GMT+14:00", "+14").replace("WSDT", "+14"),
-                    results[6].replace("GMT+12:00", "+12"),
-                    results[7].replace("HADT", "HDT"),
-                    results[8].replace("GMT-11:00", "-11"),
+                    rustFnName, results[0], results[1], results[2], results[3],
+                    results[4], results[5], results[6], results[7], results[8],
                     rustFnName, "%Y-%m-%d %H:%M:%S.%3f %Z");
         } catch (Exception e) {
             System.out.println("\n// Could not invoke " + javaMethodName + " because " + e.getMessage());
