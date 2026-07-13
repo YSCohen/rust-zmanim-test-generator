@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.kosherjava.zmanim.ComprehensiveZmanimCalendar;
 import com.kosherjava.zmanim.util.GeoLocation;
@@ -11,42 +13,53 @@ import com.kosherjava.zmanim.util.GeoLocation;
 public class GenerateCzcTests {
     public static void main(String[] args) throws IOException {
         Path outDir = Path.of(args[0]);
-        generate(outDir, false);
-        generate(outDir, true);
-    }
-
-    private static void generate(Path outDir, boolean useElevation) throws IOException {
-        StringBuilder content = new StringBuilder(String.format("""
-                //! this is a set of tests for
-                //! [ComplexZmanimCalendar](rust_zmanim::complex_zmanim_calendar::ComplexZmanimCalendar),
-                //! using %s calculations
-
-                mod test_helper;
-                use std::iter::zip;
-                """,
-                useElevation ? "elevation-adjusted" : "sea-level"));
-
         GeoLocation[] locs = Helpers.getLocs();
+
+        // filter once; the skip diagnostics go to the console, not into the files
+        List<Method> getters = new ArrayList<>();
         for (Method method : new ComprehensiveZmanimCalendar().getClass().getMethods()) {
-            if (isZmanGetter(method, content)) { // if skipped, isZmanGetter will note why
-                content.append(generateSingleZmanTest(locs, method, useElevation));
+            if (isZmanGetter(method)) { // if skipped, isZmanGetter will print why
+                getters.add(method);
             }
         }
 
-        Helpers.writeTestFile(outDir,
-                useElevation ? "test_czc_generated_elevation.rs" : "test_czc_generated_sea_level.rs",
-                content.toString());
+        for (int i = 0; i < locs.length; i++) {
+            generate(outDir, locs[i], Helpers.LOC_SLUGS[i], getters);
+        }
     }
 
-    private static String generateSingleZmanTest(GeoLocation[] locs, Method method, boolean useElevation) {
+    private static void generate(Path outDir, GeoLocation loc, String slug, List<Method> getters)
+            throws IOException {
+        StringBuilder content = new StringBuilder(String.format("""
+                //! this is a set of tests for
+                //! [ComplexZmanimCalendar](rust_zmanim::complex_zmanim_calendar::ComplexZmanimCalendar)
+                //! at %s (%s), with both elevation-adjusted and sea-level calculations
+
+                mod test_helper;
+                use rust_zmanim::complex_zmanim_calendar::UseElevation;
+                use std::iter::zip;
+                """,
+                slug, loc.getLocationName()));
+
+        for (Method method : getters) {
+            content.append(generateSingleZmanTest(loc, slug, method));
+        }
+
+        Helpers.writeTestFile(outDir, "test_czc_generated_" + slug + ".rs", content.toString());
+    }
+
+    private static String generateSingleZmanTest(GeoLocation loc, String slug, Method method) {
         try {
-            String[][] results = new String[locs.length][Helpers.SAMPLE_DATES.length];
-            for (int i = 0; i < locs.length; i++) {
-                for (int j = 0; j < Helpers.SAMPLE_DATES.length; j++) {
-                    Instant value = (Instant) method
-                            .invoke(Helpers.newCzc(locs[i], Helpers.SAMPLE_DATES[j], useElevation));
-                    results[i][j] = Helpers.formatDate(value, locs[i].getZoneId(), "yyyy-MM-dd HH:mm:ss xx");
-                }
+            String[] elevResults = new String[Helpers.SAMPLE_DATES.length];
+            String[] seaResults = new String[Helpers.SAMPLE_DATES.length];
+            for (int j = 0; j < Helpers.SAMPLE_DATES.length; j++) {
+                Instant elevValue = (Instant) method
+                        .invoke(Helpers.newCzc(loc, Helpers.SAMPLE_DATES[j], true));
+                elevResults[j] = Helpers.formatDate(elevValue, loc.getZoneId(), "yyyy-MM-dd HH:mm:ss xx");
+
+                Instant seaValue = (Instant) method
+                        .invoke(Helpers.newCzc(loc, Helpers.SAMPLE_DATES[j], false));
+                seaResults[j] = Helpers.formatDate(seaValue, loc.getZoneId(), "yyyy-MM-dd HH:mm:ss xx");
             }
 
             String modifiedName = transformMethodName(method.getName());
@@ -56,46 +69,52 @@ public class GenerateCzcTests {
 
                             #[test]
                             fn test_%s() {
-                                let mut czc = test_helper::single_czc(%b);
-                                let expected_datetime_strs = [
+                                let mut czc = test_helper::czc_at(test_helper::%s());
+                                let expected_elevation_strs = [
+                            %s    ];
+                                let expected_sea_level_strs = [
                             %s    ];
 
-                                for ((loc, label), per_loc) in zip(
-                                    zip(test_helper::more_locations(), test_helper::location_labels()),
-                                    expected_datetime_strs,
+                                for (date, (expected_elev, expected_sea)) in zip(
+                                    test_helper::sample_dates(),
+                                    zip(expected_elevation_strs, expected_sea_level_strs),
                                 ) {
-                                    czc.set_geo_location(loc);
-                                    for (date, expected) in zip(test_helper::sample_dates(), per_loc) {
-                                        czc.set_date(date);
+                                    czc.set_date(date);
+                                    for (use_elevation, expected) in [
+                                        (UseElevation::All, expected_elev),
+                                        (UseElevation::No, expected_sea),
+                                    ] {
+                                        czc.set_use_elevation(use_elevation);
                                         let actual = czc.%s().map_or_else(
                                             || String::from("None"),
                                             |dt| dt.strftime("%s").to_string(),
                                         );
-                                        assert_eq!(expected, actual, "at {label} on {date}");
+                                        assert_eq!(expected, actual, "on {date} with {use_elevation:?}");
                                     }
                                 }
                             }
                             """,
-                    modifiedName, useElevation, Helpers.nestedQuotedArrayBody(results, locs),
+                    modifiedName, slug,
+                    Helpers.quotedArrayBody(elevResults), Helpers.quotedArrayBody(seaResults),
                     modifiedName, "%Y-%m-%d %H:%M:%S %z");
         } catch (Exception e) {
             return "\n// Could not invoke " + method.getName() + " because " + e.getMessage() + "\n";
         }
     }
 
-    private static boolean isZmanGetter(Method method, StringBuilder content) {
+    private static boolean isZmanGetter(Method method) {
         if (!method.getName().startsWith("get")) {
-            content.append("\n// Skipped " + method.getName() + " because it isn't a getter\n");
+            System.out.println("skipped " + method.getName() + " because it isn't a getter");
             return false;
         }
 
         if (method.getParameterCount() != 0) {
-            content.append("\n// Skipped " + method.getName() + " because it takes parameters\n");
+            System.out.println("skipped " + method.getName() + " because it takes parameters");
             return false;
         }
 
         if (!Instant.class.equals(method.getReturnType())) {
-            content.append("\n// Skipped " + method.getName() + " because it doesn't return an Instant\n");
+            System.out.println("skipped " + method.getName() + " because it doesn't return an Instant");
             return false;
 
         }
@@ -117,14 +136,14 @@ public class GenerateCzcTests {
                 || method.getName().equals("getChatzosHalayla")
                 || method.getName().equals("getSofZmanTfilaMGA")
                 || method.getName().equals("getChatzosAsHalfDay")) {
-            content.append(
-                    "\n// Skipped " + method.getName() + " because it is one of the explicitly excluded methods\n");
+            System.out.println(
+                    "skipped " + method.getName() + " because it is one of the explicitly excluded methods");
             return false;
         }
 
         if (method.getName().contains("Mol") || method.getName().contains("Levana")) {
-            content.append(
-                    "\n// Skipped " + method.getName() + " because this library doesn't calculate molados (yet?)\n");
+            System.out.println(
+                    "skipped " + method.getName() + " because this library doesn't calculate molados (yet?)");
             return false;
         }
 
@@ -132,8 +151,8 @@ public class GenerateCzcTests {
                 || method.getName().contains("TeshuvosVehanhagos")
                 || method.getName().contains("Twilight")
                 || method.getName().contains("Transit")) {
-            content.append(
-                    "\n// Skipped " + method.getName() + " because it contains a phrase which was explicitly excluded\n");
+            System.out.println(
+                    "skipped " + method.getName() + " because it contains a phrase which was explicitly excluded");
             return false;
         }
 

@@ -136,6 +136,22 @@ public class Helpers {
         };
     }
 
+    /**
+     * File-name slugs for {@link #getLocs()}, in the same order, matching the names of the
+     * {@code test_helper::} location functions on the Rust side.
+     */
+    static final String[] LOC_SLUGS = {
+            "lakewood",
+            "jerusalem",
+            "los_angeles",
+            "tokyo",
+            "arctic_nunavut",
+            "samoa",
+            "fiji",
+            "honolulu",
+            "niue"
+    };
+
     /** Formats {@code instant} in {@code zoneId} with {@code pattern}, or {@link #NONE} if it is null. */
     static String formatDate(Instant instant, ZoneId zoneId, String pattern) {
         if (instant == null) {
