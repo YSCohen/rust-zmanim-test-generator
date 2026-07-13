@@ -1,17 +1,22 @@
 package io.github.YSCohen.rustZmanimTestGenerator;
 
+import java.io.IOException;
 import java.lang.reflect.Method;
+import java.nio.file.Path;
 import java.time.Instant;
 
 import com.kosherjava.zmanim.ComprehensiveZmanimCalendar;
 import com.kosherjava.zmanim.util.GeoLocation;
 
 public class GenerateCzcTests {
-    public static void main(String[] args) {
-        boolean useElevation = Helpers.useElevation(args);
+    public static void main(String[] args) throws IOException {
+        Path outDir = Path.of(args[0]);
+        generate(outDir, false);
+        generate(outDir, true);
+    }
 
-        Helpers.printHeader();
-        System.out.printf("""
+    private static void generate(Path outDir, boolean useElevation) throws IOException {
+        StringBuilder content = new StringBuilder(String.format("""
                 //! this is a set of tests for
                 //! [ComplexZmanimCalendar](rust_zmanim::complex_zmanim_calendar::ComplexZmanimCalendar),
                 //! using %s calculations
@@ -19,17 +24,21 @@ public class GenerateCzcTests {
                 mod test_helper;
                 use std::iter::zip;
                 """,
-                useElevation ? "elevation-adjusted" : "sea-level");
+                useElevation ? "elevation-adjusted" : "sea-level"));
 
         GeoLocation[] locs = Helpers.getLocs();
         for (Method method : new ComprehensiveZmanimCalendar().getClass().getMethods()) {
-            if (isZmanGetter(method)) { // if skipped, isZmanGetter will print why
-                generateSingleZmanTest(locs, method, useElevation);
+            if (isZmanGetter(method, content)) { // if skipped, isZmanGetter will note why
+                content.append(generateSingleZmanTest(locs, method, useElevation));
             }
         }
+
+        Helpers.writeTestFile(outDir,
+                useElevation ? "test_czc_generated_elevation.rs" : "test_czc_generated_sea_level.rs",
+                content.toString());
     }
 
-    private static void generateSingleZmanTest(GeoLocation[] locs, Method method, boolean useElevation) {
+    private static String generateSingleZmanTest(GeoLocation[] locs, Method method, boolean useElevation) {
         try {
             String[][] results = new String[locs.length][Helpers.SAMPLE_DATES.length];
             for (int i = 0; i < locs.length; i++) {
@@ -42,7 +51,7 @@ public class GenerateCzcTests {
 
             String modifiedName = transformMethodName(method.getName());
 
-            System.out.printf(
+            return String.format(
                     """
 
                             #[test]
@@ -70,23 +79,23 @@ public class GenerateCzcTests {
                     modifiedName, useElevation, Helpers.nestedQuotedArrayBody(results, locs),
                     modifiedName, "%Y-%m-%d %H:%M:%S %z");
         } catch (Exception e) {
-            System.out.println("\n// Could not invoke " + method.getName() + " because " + e.getMessage());
+            return "\n// Could not invoke " + method.getName() + " because " + e.getMessage() + "\n";
         }
     }
 
-    private static boolean isZmanGetter(Method method) {
+    private static boolean isZmanGetter(Method method, StringBuilder content) {
         if (!method.getName().startsWith("get")) {
-            System.out.println("\n// Skipped " + method.getName() + " because it isn't a getter");
+            content.append("\n// Skipped " + method.getName() + " because it isn't a getter\n");
             return false;
         }
 
         if (method.getParameterCount() != 0) {
-            System.out.println("\n// Skipped " + method.getName() + " because it takes parameters");
+            content.append("\n// Skipped " + method.getName() + " because it takes parameters\n");
             return false;
         }
 
         if (!Instant.class.equals(method.getReturnType())) {
-            System.out.println("\n// Skipped " + method.getName() + " because it doesn't return an Instant");
+            content.append("\n// Skipped " + method.getName() + " because it doesn't return an Instant\n");
             return false;
 
         }
@@ -108,14 +117,14 @@ public class GenerateCzcTests {
                 || method.getName().equals("getChatzosHalayla")
                 || method.getName().equals("getSofZmanTfilaMGA")
                 || method.getName().equals("getChatzosAsHalfDay")) {
-            System.out.println(
-                    "\n// Skipped " + method.getName() + " because it is one of the explicitly excluded methods");
+            content.append(
+                    "\n// Skipped " + method.getName() + " because it is one of the explicitly excluded methods\n");
             return false;
         }
 
         if (method.getName().contains("Mol") || method.getName().contains("Levana")) {
-            System.out.println(
-                    "\n// Skipped " + method.getName() + " because this library doesn't calculate molados (yet?)");
+            content.append(
+                    "\n// Skipped " + method.getName() + " because this library doesn't calculate molados (yet?)\n");
             return false;
         }
 
@@ -123,8 +132,8 @@ public class GenerateCzcTests {
                 || method.getName().contains("TeshuvosVehanhagos")
                 || method.getName().contains("Twilight")
                 || method.getName().contains("Transit")) {
-            System.out.println(
-                    "\n// Skipped " + method.getName() + " because it contains a phrase which was explicitly excluded");
+            content.append(
+                    "\n// Skipped " + method.getName() + " because it contains a phrase which was explicitly excluded\n");
             return false;
         }
 

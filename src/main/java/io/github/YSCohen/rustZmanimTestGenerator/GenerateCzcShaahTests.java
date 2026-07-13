@@ -1,17 +1,22 @@
 package io.github.YSCohen.rustZmanimTestGenerator;
 
+import java.io.IOException;
 import java.lang.reflect.Method;
+import java.nio.file.Path;
 import java.time.Duration;
 
 import com.kosherjava.zmanim.ComprehensiveZmanimCalendar;
 import com.kosherjava.zmanim.util.GeoLocation;
 
 public class GenerateCzcShaahTests {
-    public static void main(String[] args) {
-        boolean useElevation = Helpers.useElevation(args);
+    public static void main(String[] args) throws IOException {
+        Path outDir = Path.of(args[0]);
+        generate(outDir, false);
+        generate(outDir, true);
+    }
 
-        Helpers.printHeader();
-        System.out.printf("""
+    private static void generate(Path outDir, boolean useElevation) throws IOException {
+        StringBuilder content = new StringBuilder(String.format("""
                 //! this is a set of tests for the *shaah zmanis* methods of
                 //! [ComplexZmanimCalendar](rust_zmanim::complex_zmanim_calendar::ComplexZmanimCalendar),
                 //! using %s calculations.
@@ -20,17 +25,21 @@ public class GenerateCzcShaahTests {
                 use jiff::{RoundMode, SignedDurationRound, Unit};
                 use std::iter::zip;
                 """,
-                useElevation ? "elevation-adjusted" : "sea-level");
+                useElevation ? "elevation-adjusted" : "sea-level"));
 
         GeoLocation[] locs = Helpers.getLocs();
         for (Method method : new ComprehensiveZmanimCalendar().getClass().getMethods()) {
             if (isShaahGetter(method)) {
-                generateSingleZmanTest(locs, method, useElevation);
+                content.append(generateSingleZmanTest(locs, method, useElevation));
             }
         }
+
+        Helpers.writeTestFile(outDir,
+                useElevation ? "test_czc_shaah_generated_elevation.rs" : "test_czc_shaah_generated_sea_level.rs",
+                content.toString());
     }
 
-    private static void generateSingleZmanTest(GeoLocation[] locs, Method method, boolean useElevation) {
+    private static String generateSingleZmanTest(GeoLocation[] locs, Method method, boolean useElevation) {
         try {
             String[][] results = new String[locs.length][Helpers.SAMPLE_DATES.length];
             for (int i = 0; i < locs.length; i++) {
@@ -43,7 +52,7 @@ public class GenerateCzcShaahTests {
 
             String modifiedName = transformMethodName(method.getName());
 
-            System.out.printf(
+            return String.format(
                     """
 
                             #[test]
@@ -79,7 +88,7 @@ public class GenerateCzcShaahTests {
                     modifiedName, useElevation, Helpers.nestedQuotedArrayBody(results, locs),
                     modifiedName);
         } catch (Exception e) {
-            System.out.println("\n// Could not invoke " + method.getName() + " because " + e.getMessage());
+            return "\n// Could not invoke " + method.getName() + " because " + e.getMessage() + "\n";
         }
     }
 

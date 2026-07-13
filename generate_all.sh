@@ -1,11 +1,7 @@
 #!/bin/bash
 
-mvn exec:java -Dexec.mainClass="io.github.YSCohen.rustZmanimTestGenerator.GenerateAcTests" --quiet > "$1/test_ac_generated.rs"
+# Each generator writes its own test file(s) into the directory given as $1
 
-mvn exec:java -Dexec.mainClass="io.github.YSCohen.rustZmanimTestGenerator.GenerateCzcTests" --quiet > "$1/test_czc_generated_sea_level.rs"
-mvn exec:java -Dexec.mainClass="io.github.YSCohen.rustZmanimTestGenerator.GenerateCzcTests" -Dexec.args="elev" --quiet > "$1/test_czc_generated_elevation.rs"
-
-mvn exec:java -Dexec.mainClass="io.github.YSCohen.rustZmanimTestGenerator.GenerateCzcShaahTests" --quiet > "$1/test_czc_shaah_generated_sea_level.rs"
-mvn exec:java -Dexec.mainClass="io.github.YSCohen.rustZmanimTestGenerator.GenerateCzcShaahTests" -Dexec.args="elev" --quiet > "$1/test_czc_shaah_generated_elevation.rs"
-
-mvn exec:java -Dexec.mainClass="io.github.YSCohen.rustZmanimTestGenerator.GenerateSolarPositionTests" --quiet > "$1/test_solar_position_generated.rs"
+for gen in GenerateAcTests GenerateCzcTests GenerateCzcShaahTests GenerateSolarPositionTests; do
+    mvn exec:java -Dexec.mainClass="io.github.YSCohen.rustZmanimTestGenerator.$gen" -Dexec.arguments="$1" --quiet
+done

@@ -1,15 +1,16 @@
 package io.github.YSCohen.rustZmanimTestGenerator;
 
+import java.io.IOException;
 import java.lang.reflect.Method;
+import java.nio.file.Path;
 import java.time.Instant;
 
 import com.kosherjava.zmanim.AstronomicalCalendar;
 import com.kosherjava.zmanim.util.GeoLocation;
 
 public class GenerateAcTests {
-    public static void main(String[] args) {
-        Helpers.printHeader();
-        System.out.print("""
+    public static void main(String[] args) throws IOException {
+        StringBuilder content = new StringBuilder("""
                 //! this is a set of tests for
                 //! [astronomical_calculator](rust_zmanim::astronomical_calculator)
 
@@ -20,17 +21,19 @@ public class GenerateAcTests {
 
         GeoLocation[] locs = Helpers.getLocs();
 
-        generateSingleTest(locs, "getSunrise", "sunrise");
-        generateSingleTest(locs, "getSeaLevelSunrise", "sea_level_sunrise");
+        content.append(generateSingleTest(locs, "getSunrise", "sunrise"));
+        content.append(generateSingleTest(locs, "getSeaLevelSunrise", "sea_level_sunrise"));
 
-        generateSingleTest(locs, "getSunset", "sunset");
-        generateSingleTest(locs, "getSeaLevelSunset", "sea_level_sunset");
+        content.append(generateSingleTest(locs, "getSunset", "sunset"));
+        content.append(generateSingleTest(locs, "getSeaLevelSunset", "sea_level_sunset"));
 
-        generateSingleTest(locs, "getSunTransit", "solar_noon");
-        generateSingleTest(locs, "getSolarMidnight", "solar_midnight");
+        content.append(generateSingleTest(locs, "getSunTransit", "solar_noon"));
+        content.append(generateSingleTest(locs, "getSolarMidnight", "solar_midnight"));
+
+        Helpers.writeTestFile(Path.of(args[0]), "test_ac_generated.rs", content.toString());
     }
 
-    private static void generateSingleTest(GeoLocation[] locs, String javaMethodName, String rustFnName) {
+    private static String generateSingleTest(GeoLocation[] locs, String javaMethodName, String rustFnName) {
         try {
             String[][] results = new String[locs.length][Helpers.SAMPLE_DATES.length];
             for (int i = 0; i < locs.length; i++) {
@@ -44,7 +47,7 @@ public class GenerateAcTests {
                 }
             }
 
-            System.out.printf(
+            return String.format(
                     """
 
                             #[test]
@@ -69,7 +72,7 @@ public class GenerateAcTests {
                     rustFnName, Helpers.nestedQuotedArrayBody(results, locs),
                     rustFnName, "%Y-%m-%d %H:%M:%S %z");
         } catch (Exception e) {
-            System.out.println("\n// Could not invoke " + javaMethodName + " because " + e.getMessage());
+            return "\n// Could not invoke " + javaMethodName + " because " + e.getMessage() + "\n";
         }
     }
 }

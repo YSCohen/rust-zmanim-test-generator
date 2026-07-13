@@ -1,5 +1,7 @@
 package io.github.YSCohen.rustZmanimTestGenerator;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.time.Instant;
 
 import com.kosherjava.zmanim.util.GeoLocation;
@@ -14,9 +16,8 @@ public class GenerateSolarPositionTests {
     /** The UTC time of day at which the solar position is sampled on each of {@link Helpers#SAMPLE_DATES}. */
     private static final String TIME_SUFFIX = "T12:34:56.789Z";
 
-    public static void main(String[] args) {
-        Helpers.printHeader();
-        System.out.print("""
+    public static void main(String[] args) throws IOException {
+        StringBuilder content = new StringBuilder("""
                 //! this is a set of tests for the solar azimuth and elevation functions of
                 //! [astronomical_calculator](rust_zmanim::astronomical_calculator) and
                 //! [ComplexZmanimCalendar](rust_zmanim::complex_zmanim_calendar::ComplexZmanimCalendar)
@@ -55,17 +56,19 @@ public class GenerateSolarPositionTests {
             }
         }
 
-        printTest("test_ac_solar_azimuth", "astronomical_calculator::solar_azimuth(&instant, &loc)",
-                false, azimuths, locs);
-        printTest("test_ac_solar_elevation", "astronomical_calculator::solar_elevation(&instant, &loc)",
-                false, elevations, locs);
-        printTest("test_czc_solar_azimuth", "czc.solar_azimuth(&instant)",
-                true, azimuths, locs);
-        printTest("test_czc_solar_elevation", "czc.solar_elevation(&instant)",
-                true, elevations, locs);
+        content.append(generateSingleTest("test_ac_solar_azimuth",
+                "astronomical_calculator::solar_azimuth(&instant, &loc)", false, azimuths, locs));
+        content.append(generateSingleTest("test_ac_solar_elevation",
+                "astronomical_calculator::solar_elevation(&instant, &loc)", false, elevations, locs));
+        content.append(generateSingleTest("test_czc_solar_azimuth",
+                "czc.solar_azimuth(&instant)", true, azimuths, locs));
+        content.append(generateSingleTest("test_czc_solar_elevation",
+                "czc.solar_elevation(&instant)", true, elevations, locs));
+
+        Helpers.writeTestFile(Path.of(args[0]), "test_solar_position_generated.rs", content.toString());
     }
 
-    private static void printTest(String testName, String call, boolean useCzc, double[][] values,
+    private static String generateSingleTest(String testName, String call, boolean useCzc, double[][] values,
             GeoLocation[] locs) {
         String[][] elements = new String[values.length][];
         for (int i = 0; i < values.length; i++) {
@@ -78,7 +81,7 @@ public class GenerateSolarPositionTests {
         String setup = useCzc ? "    let mut czc = test_helper::single_czc(false);\n" : "";
         String repoint = useCzc ? "        czc.set_geo_location(loc);\n" : "";
 
-        System.out.printf(
+        return String.format(
                 """
 
                         #[test]
