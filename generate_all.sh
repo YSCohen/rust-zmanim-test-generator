@@ -7,3 +7,5 @@ mvn exec:java -Dexec.mainClass="io.github.YSCohen.rustZmanimTestGenerator.Genera
 
 mvn exec:java -Dexec.mainClass="io.github.YSCohen.rustZmanimTestGenerator.GenerateCzcShaahTests" --quiet > "$1/test_czc_shaah_generated_sea_level.rs"
 mvn exec:java -Dexec.mainClass="io.github.YSCohen.rustZmanimTestGenerator.GenerateCzcShaahTests" -Dexec.args="elev" --quiet > "$1/test_czc_shaah_generated_elevation.rs"
+
+mvn exec:java -Dexec.mainClass="io.github.YSCohen.rustZmanimTestGenerator.GenerateSolarPositionTests" --quiet > "$1/test_solar_position_generated.rs"

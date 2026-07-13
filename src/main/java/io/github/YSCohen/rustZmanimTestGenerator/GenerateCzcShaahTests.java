@@ -2,20 +2,14 @@ package io.github.YSCohen.rustZmanimTestGenerator;
 
 import java.lang.reflect.Method;
 import java.time.Duration;
-import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 
-import com.google.common.base.CaseFormat;
 import com.kosherjava.zmanim.ComprehensiveZmanimCalendar;
 import com.kosherjava.zmanim.util.GeoLocation;
 
 public class GenerateCzcShaahTests {
     public static void main(String[] args) {
-        boolean elev = (args.length > 0 && args[0].equals("elev"));
-        generateAllZmanTests(elev);
-    }
+        boolean useElevation = Helpers.useElevation(args);
 
-    private static void generateAllZmanTests(boolean useElevation) {
         Helpers.printHeader();
         System.out.printf("""
                 //! this is a set of tests for the *shaah zmanis* methods of
@@ -29,9 +23,7 @@ public class GenerateCzcShaahTests {
                 useElevation ? "elevation-adjusted" : "sea-level");
 
         GeoLocation[] locs = Helpers.getLocs();
-        Method[] methods = new ComprehensiveZmanimCalendar().getClass().getMethods();
-
-        for (Method method : methods) {
+        for (Method method : new ComprehensiveZmanimCalendar().getClass().getMethods()) {
             if (isShaahGetter(method)) {
                 generateSingleZmanTest(locs, method, useElevation);
             }
@@ -41,14 +33,9 @@ public class GenerateCzcShaahTests {
     private static void generateSingleZmanTest(GeoLocation[] locs, Method method, boolean useElevation) {
         try {
             String[] results = new String[locs.length];
-            LocalDate ld = LocalDate.of(2017, 10, 17);
             for (int i = 0; i < locs.length; i++) {
-                ComprehensiveZmanimCalendar czcOfLocation = new ComprehensiveZmanimCalendar(locs[i]);
-                czcOfLocation.setLocalDate(ld);
-                czcOfLocation.setUseElevation(useElevation);
-
-                Duration value = (Duration) method.invoke(czcOfLocation);
-                results[i] = formatDuration(value);
+                Duration value = (Duration) method.invoke(Helpers.newCzc(locs[i], useElevation));
+                results[i] = Helpers.formatDuration(value);
             }
 
             String modifiedName = transformMethodName(method.getName());
@@ -59,20 +46,11 @@ public class GenerateCzcShaahTests {
                             #[test]
                             fn test_%s() {
                                 let cals = test_helper::more_locations_czcs(%b);
-                                let expected_datetime_strs = [
-                                    "%s",
-                                    "%s",
-                                    "%s",
-                                    "%s",
-                                    "%s",
-                                    "%s",
-                                    "%s",
-                                    "%s",
-                                    "%s",
-                                ];
+                                let expected_duration_strs = [
+                            %s    ];
 
-                                for (czc, edt) in zip(cals, expected_datetime_strs) {
-                                    let result = czc.%s().map_or_else(
+                                for (czc, expected) in zip(cals, expected_duration_strs) {
+                                    let actual = czc.%s().map_or_else(
                                         || String::from("None"),
                                         |sd| {
                                             sd.round(
@@ -84,13 +62,11 @@ public class GenerateCzcShaahTests {
                                             .to_string()
                                         },
                                     );
-                                    assert_eq!(result, edt)
+                                    assert_eq!(expected, actual)
                                 }
                             }
                             """,
-                    modifiedName, useElevation,
-                    results[0], results[1], results[2], results[3], results[4],
-                    results[5], results[6], results[7], results[8],
+                    modifiedName, useElevation, Helpers.quotedArrayBody(results),
                     modifiedName);
         } catch (Exception e) {
             System.out.println("\n// Could not invoke " + method.getName() + " because " + e.getMessage());
@@ -105,21 +81,11 @@ public class GenerateCzcShaahTests {
     }
 
     private static String transformMethodName(String methodName) {
-        return CaseFormat.LOWER_CAMEL.to(CaseFormat.LOWER_UNDERSCORE, methodName)
-                .replace("get_", "")
-                .replaceAll("([a-z])(\\d)", "$1_$2")
+        return Helpers.baseRustName(methodName)
                 .replaceAll("zmanis_(\\d)", "zmanis_mga_$1")
-                // .replaceAll("(\\d)$", "$1_minutes")
                 .replace("_point", "")
+                .replaceAll("([\\d_]+)_degrees_to_(.+)_geonim_([\\d_]+)_degrees", "$1_to_$2_$3")
                 .replace("tzais", "tzeis")
                 .replace("g_r_a", "gra");
-    }
-
-    private static String formatDuration(Duration d) {
-        if (d == null) {
-            return "None";
-        } else {
-            return d.truncatedTo(ChronoUnit.MILLIS).toString();
-        }
     }
 }

@@ -2,17 +2,12 @@ package io.github.YSCohen.rustZmanimTestGenerator;
 
 import java.lang.reflect.Method;
 import java.time.Instant;
-import java.time.LocalDate;
 
 import com.kosherjava.zmanim.AstronomicalCalendar;
 import com.kosherjava.zmanim.util.GeoLocation;
 
 public class GenerateAcTests {
     public static void main(String[] args) {
-        generateAllTests();
-    }
-
-    private static void generateAllTests() {
         Helpers.printHeader();
         System.out.print("""
                 //! this is a set of tests for
@@ -39,14 +34,13 @@ public class GenerateAcTests {
     private static void generateSingleTest(GeoLocation[] locs, String javaMethodName, String rustFnName) {
         try {
             String[] results = new String[locs.length];
-            LocalDate ld = LocalDate.of(2017, 10, 17);
             for (int i = 0; i < locs.length; i++) {
-                AstronomicalCalendar acOfLocation = new AstronomicalCalendar(locs[i]);
-                acOfLocation.setLocalDate(ld);
+                AstronomicalCalendar ac = new AstronomicalCalendar(locs[i]);
+                ac.setLocalDate(Helpers.SAMPLE_DATE);
 
-                Method method = acOfLocation.getClass().getMethod(javaMethodName, new Class<?>[0]);
-                Instant value = (Instant) method.invoke(acOfLocation);
-                results[i] = Helpers.formatDate(value, locs[i].getZoneId(), "yyyy-MM-dd HH:mm:ss.SSS z");
+                Method method = ac.getClass().getMethod(javaMethodName);
+                Instant value = (Instant) method.invoke(ac);
+                results[i] = Helpers.formatDate(value, locs[i].getZoneId(), "yyyy-MM-dd HH:mm:ss.SSS xx");
             }
 
             System.out.printf(
@@ -56,30 +50,20 @@ public class GenerateAcTests {
                             fn test_%s() {
                                 let locations = test_helper::more_locations();
                                 let expected_datetime_strs = [
-                                    "%s",
-                                    "%s",
-                                    "%s",
-                                    "%s",
-                                    "%s",
-                                    "%s",
-                                    "%s",
-                                    "%s",
-                                    "%s",
-                                ];
+                            %s    ];
 
-                                for (loc, edt) in zip(locations, expected_datetime_strs) {
+                                for (loc, expected) in zip(locations, expected_datetime_strs) {
                                     let date = civil::date(2017, 10, 17);
-                                    let result = match astronomical_calculator::%s(&date, &loc) {
+                                    let actual = match astronomical_calculator::%s(date, &loc) {
                                         Some(dt) => dt.strftime("%s").to_string(),
                                         None => String::from("None"),
                                     };
-                                    assert_eq!(result, edt)
+                                    assert_eq!(expected, actual)
                                 }
                             }
                             """,
-                    rustFnName, results[0], results[1], results[2], results[3],
-                    results[4], results[5], results[6], results[7], results[8],
-                    rustFnName, "%Y-%m-%d %H:%M:%S.%3f %Z");
+                    rustFnName, Helpers.quotedArrayBody(results),
+                    rustFnName, "%Y-%m-%d %H:%M:%S.%3f %z");
         } catch (Exception e) {
             System.out.println("\n// Could not invoke " + javaMethodName + " because " + e.getMessage());
         }

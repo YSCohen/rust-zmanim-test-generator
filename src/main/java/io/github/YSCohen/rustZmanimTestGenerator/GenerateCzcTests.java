@@ -2,19 +2,14 @@ package io.github.YSCohen.rustZmanimTestGenerator;
 
 import java.lang.reflect.Method;
 import java.time.Instant;
-import java.time.LocalDate;
 
-import com.google.common.base.CaseFormat;
 import com.kosherjava.zmanim.ComprehensiveZmanimCalendar;
 import com.kosherjava.zmanim.util.GeoLocation;
 
 public class GenerateCzcTests {
     public static void main(String[] args) {
-        boolean elev = (args.length > 0 && args[0].equals("elev"));
-        generateAllZmanTests(elev);
-    }
+        boolean useElevation = Helpers.useElevation(args);
 
-    private static void generateAllZmanTests(boolean useElevation) {
         Helpers.printHeader();
         System.out.printf("""
                 //! this is a set of tests for
@@ -27,9 +22,7 @@ public class GenerateCzcTests {
                 useElevation ? "elevation-adjusted" : "sea-level");
 
         GeoLocation[] locs = Helpers.getLocs();
-        Method[] methods = new ComprehensiveZmanimCalendar().getClass().getMethods();
-
-        for (Method method : methods) {
+        for (Method method : new ComprehensiveZmanimCalendar().getClass().getMethods()) {
             if (isZmanGetter(method)) { // if skipped, isZmanGetter will print why
                 generateSingleZmanTest(locs, method, useElevation);
             }
@@ -39,14 +32,9 @@ public class GenerateCzcTests {
     private static void generateSingleZmanTest(GeoLocation[] locs, Method method, boolean useElevation) {
         try {
             String[] results = new String[locs.length];
-            LocalDate ld = LocalDate.of(2017, 10, 17);
             for (int i = 0; i < locs.length; i++) {
-                ComprehensiveZmanimCalendar czcOfLocation = new ComprehensiveZmanimCalendar(locs[i]);
-                czcOfLocation.setLocalDate(ld);
-                czcOfLocation.setUseElevation(useElevation);
-
-                Instant value = (Instant) method.invoke(czcOfLocation);
-                results[i] = Helpers.formatDate(value, locs[i].getZoneId(), "yyyy-MM-dd HH:mm:ss z");
+                Instant value = (Instant) method.invoke(Helpers.newCzc(locs[i], useElevation));
+                results[i] = Helpers.formatDate(value, locs[i].getZoneId(), "yyyy-MM-dd HH:mm:ss xx");
             }
 
             String modifiedName = transformMethodName(method.getName());
@@ -58,29 +46,19 @@ public class GenerateCzcTests {
                             fn test_%s() {
                                 let cals = test_helper::more_locations_czcs(%b);
                                 let expected_datetime_strs = [
-                                    "%s",
-                                    "%s",
-                                    "%s",
-                                    "%s",
-                                    "%s",
-                                    "%s",
-                                    "%s",
-                                    "%s",
-                                    "%s",
-                                ];
+                            %s    ];
 
-                                for (czc, edt) in zip(cals, expected_datetime_strs) {
-                                    let result = czc.%s().map_or_else(
+                                for (czc, expected) in zip(cals, expected_datetime_strs) {
+                                    let actual = czc.%s().map_or_else(
                                         || String::from("None"),
                                         |dt| dt.strftime("%s").to_string(),
                                     );
-                                    assert_eq!(result, edt)
+                                    assert_eq!(expected, actual)
                                 }
                             }
                             """,
-                    modifiedName, useElevation, results[0], results[1], results[2],
-                    results[3], results[4], results[5], results[6], results[7], results[8],
-                    modifiedName, "%Y-%m-%d %H:%M:%S %Z");
+                    modifiedName, useElevation, Helpers.quotedArrayBody(results),
+                    modifiedName, "%Y-%m-%d %H:%M:%S %z");
         } catch (Exception e) {
             System.out.println("\n// Could not invoke " + method.getName() + " because " + e.getMessage());
         }
@@ -115,6 +93,9 @@ public class GenerateCzcTests {
                 || method.getName().equals("getPlagHamincha")
                 || method.getName().equals("getSofZmanShmaMGA")
                 || method.getName().equals("getCandleLighting")
+                // for some reason it generates duplicate tests for chtzos
+                // halayla, but if i put this filter it only generates one
+                || method.getName().equals("getChatzosHalayla")
                 || method.getName().equals("getSofZmanTfilaMGA")
                 || method.getName().equals("getChatzosAsHalfDay")) {
             System.out.println(
@@ -129,6 +110,7 @@ public class GenerateCzcTests {
         }
 
         if (method.getName().contains("Chametz")
+                || method.getName().contains("TeshuvosVehanhagos")
                 || method.getName().contains("Twilight")
                 || method.getName().contains("Transit")) {
             System.out.println(
@@ -140,19 +122,19 @@ public class GenerateCzcTests {
     }
 
     private static String transformMethodName(String methodName) {
-        return CaseFormat.LOWER_CAMEL.to(CaseFormat.LOWER_UNDERSCORE, methodName)
-                .replace("get_", "")
-                .replaceAll("([a-z])(\\d)", "$1_$2")
+        return Helpers.baseRustName(methodName)
                 .replaceAll("(\\d)$", "$1_minutes")
                 .replaceAll("(mincha.{0,12}?)_(\\d)", "$1_mga_$2")
                 .replaceAll("(sof.{0,14}?)_(\\d)", "$1_mga_$2")
                 .replaceAll("plag_(\\d)", "plag_mga_$2")
                 .replaceAll("mga_(\\d)_hours", "$1_hrs")
                 .replaceAll("(\\d)_zmanis", "$1_minutes_zmanis")
+                .replace("_point", "")
+                .replaceAll("([\\d_]+)_degrees_to_(.+)_geonim_([\\d_]+)_degrees", "$1_to_$2_$3")
                 .replace("g_r_a", "gra")
                 .replace("m_g_a", "mga")
+                .replaceAll("mga_([\\d_]+)_degrees_to_fixed_local_chatzos", "mga_alos_$1_to_fixed_local_chatzos")
                 .replace("r_t", "rt")
-                .replace("_point", "")
                 .replace("shma", "shema")
                 .replace("tfila", "tefila")
                 .replace("plag_hamincha", "plag")
@@ -160,9 +142,8 @@ public class GenerateCzcTests {
                 .replace("tzais", "tzeis")
                 .replace("le_mincha", "lemincha")
                 .replace("solar_midnight", "chatzos_halayla")
-                .replace("plag_alos_to_sunset", "plag_alos_16_1_degrees_to_sunset")
+                .replace("plag_alos_to_sunset", "plag_alos_16_1_to_sunset")
                 .replace("mincha_gedola_mga_30_minutes", "mincha_gedola_30_minutes")
-                .replace("alos_16_1_to", "alos_16_1_degrees_to")
                 .replace("greaterthan", "greater_than")
                 .replace("gedola_greater", "gedola_gra_greater")
                 .replace("sunrise_with_elevation", "elevation_sunrise")
