@@ -14,7 +14,6 @@ public class GenerateAcTests {
                 //! [astronomical_calculator](rust_zmanim::astronomical_calculator)
 
                 mod test_helper;
-                use jiff::civil;
                 use rust_zmanim::astronomical_calculator;
                 use std::iter::zip;
                 """);
@@ -33,14 +32,16 @@ public class GenerateAcTests {
 
     private static void generateSingleTest(GeoLocation[] locs, String javaMethodName, String rustFnName) {
         try {
-            String[] results = new String[locs.length];
+            String[][] results = new String[locs.length][Helpers.SAMPLE_DATES.length];
             for (int i = 0; i < locs.length; i++) {
                 AstronomicalCalendar ac = new AstronomicalCalendar(locs[i]);
-                ac.setLocalDate(Helpers.SAMPLE_DATE);
-
                 Method method = ac.getClass().getMethod(javaMethodName);
-                Instant value = (Instant) method.invoke(ac);
-                results[i] = Helpers.formatDate(value, locs[i].getZoneId(), "yyyy-MM-dd HH:mm:ss.SSS xx");
+
+                for (int j = 0; j < Helpers.SAMPLE_DATES.length; j++) {
+                    ac.setLocalDate(Helpers.SAMPLE_DATES[j]);
+                    Instant value = (Instant) method.invoke(ac);
+                    results[i][j] = Helpers.formatDate(value, locs[i].getZoneId(), "yyyy-MM-dd HH:mm:ss xx");
+                }
             }
 
             System.out.printf(
@@ -48,22 +49,25 @@ public class GenerateAcTests {
 
                             #[test]
                             fn test_%s() {
-                                let locations = test_helper::more_locations();
                                 let expected_datetime_strs = [
                             %s    ];
 
-                                for (loc, expected) in zip(locations, expected_datetime_strs) {
-                                    let date = civil::date(2017, 10, 17);
-                                    let actual = match astronomical_calculator::%s(date, &loc) {
-                                        Some(dt) => dt.strftime("%s").to_string(),
-                                        None => String::from("None"),
-                                    };
-                                    assert_eq!(expected, actual)
+                                for ((loc, label), per_loc) in zip(
+                                    zip(test_helper::more_locations(), test_helper::location_labels()),
+                                    expected_datetime_strs,
+                                ) {
+                                    for (date, expected) in zip(test_helper::sample_dates(), per_loc) {
+                                        let actual = match astronomical_calculator::%s(date, &loc) {
+                                            Some(dt) => dt.strftime("%s").to_string(),
+                                            None => String::from("None"),
+                                        };
+                                        assert_eq!(expected, actual, "at {label} on {date}");
+                                    }
                                 }
                             }
                             """,
-                    rustFnName, Helpers.quotedArrayBody(results),
-                    rustFnName, "%Y-%m-%d %H:%M:%S.%3f %z");
+                    rustFnName, Helpers.nestedQuotedArrayBody(results, locs),
+                    rustFnName, "%Y-%m-%d %H:%M:%S %z");
         } catch (Exception e) {
             System.out.println("\n// Could not invoke " + javaMethodName + " because " + e.getMessage());
         }

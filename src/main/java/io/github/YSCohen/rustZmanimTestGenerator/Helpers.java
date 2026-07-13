@@ -13,8 +13,20 @@ import com.kosherjava.zmanim.util.GeoLocation;
 
 /** Shared configuration, name mangling, and formatting used by every test generator. */
 public class Helpers {
-    /** The date every generated test is evaluated on (mirrors {@code civil::date(2017, 10, 17)} on the Rust side). */
-    static final LocalDate SAMPLE_DATE = LocalDate.of(2017, 10, 17);
+    /**
+     * The dates every generated test is evaluated on, in the same order as {@code test_helper::sample_dates()}
+     * on the Rust side. All recent, so both sides use current timezone rules; chosen for seasonal extremes
+     * (arctic polar night / midnight sun), DST transitions, and a leap day.
+     */
+    static final LocalDate[] SAMPLE_DATES = {
+            LocalDate.of(2024, 2, 29), // leap day
+            LocalDate.of(2025, 10, 17), // autumn mid-season
+            LocalDate.of(2025, 11, 2), // US DST fall-back
+            LocalDate.of(2025, 12, 21), // winter solstice
+            LocalDate.of(2026, 3, 8), // US DST spring-forward
+            LocalDate.of(2026, 3, 20), // spring equinox
+            LocalDate.of(2026, 6, 21), // summer solstice
+    };
 
     /** Placeholder emitted for an absent (null) result, matching {@code None} on the Rust side. */
     static final String NONE = "None";
@@ -27,10 +39,10 @@ public class Helpers {
         return args.length > 0 && args[0].equals("elev");
     }
 
-    /** A calendar for {@code loc} configured for {@link #SAMPLE_DATE} and the given elevation mode. */
-    static ComprehensiveZmanimCalendar newCzc(GeoLocation loc, boolean useElevation) {
+    /** A calendar for {@code loc} configured for {@code date} and the given elevation mode. */
+    static ComprehensiveZmanimCalendar newCzc(GeoLocation loc, LocalDate date, boolean useElevation) {
         ComprehensiveZmanimCalendar czc = new ComprehensiveZmanimCalendar(loc);
-        czc.setLocalDate(SAMPLE_DATE);
+        czc.setLocalDate(date);
         czc.setUseElevation(useElevation);
         return czc;
     }
@@ -155,6 +167,35 @@ public class Helpers {
             quoted[i] = "\"" + values[i] + "\"";
         }
         return arrayBody(quoted);
+    }
+
+    /**
+     * Renders {@code rows[loc][date]} as the body of a nested Rust array-literal: one inner array per
+     * location, preceded by a comment naming it. Inner values must be pre-formatted.
+     */
+    static String nestedArrayBody(String[][] rows, GeoLocation[] locs) {
+        StringBuilder body = new StringBuilder();
+        for (int i = 0; i < rows.length; i++) {
+            body.append("        // ").append(locs[i].getLocationName()).append("\n");
+            body.append("        [\n");
+            for (String value : rows[i]) {
+                body.append("            ").append(value).append(",\n");
+            }
+            body.append("        ],\n");
+        }
+        return body.toString();
+    }
+
+    /** Like {@link #nestedArrayBody}, but wraps each value in double quotes. */
+    static String nestedQuotedArrayBody(String[][] rows, GeoLocation[] locs) {
+        String[][] quoted = new String[rows.length][];
+        for (int i = 0; i < rows.length; i++) {
+            quoted[i] = new String[rows[i].length];
+            for (int j = 0; j < rows[i].length; j++) {
+                quoted[i][j] = "\"" + rows[i][j] + "\"";
+            }
+        }
+        return nestedArrayBody(quoted, locs);
     }
 
     static void printHeader() {
