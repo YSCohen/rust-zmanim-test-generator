@@ -123,6 +123,13 @@ public class Helpers {
                 75,
                 ZoneId.of("Pacific/Niue"));
 
+        GeoLocation chathamIslands = new GeoLocation(
+                "CI",
+                -44.00,
+                -176.50,
+                299,
+                ZoneId.of("Pacific/Chatham"));
+
         return new GeoLocation[] {
                 lakewood,
                 jerusalem,
@@ -132,7 +139,8 @@ public class Helpers {
                 samoa,
                 fiji,
                 honolulu,
-                niue
+                niue,
+                chathamIslands
         };
     }
 
@@ -149,7 +157,8 @@ public class Helpers {
             "samoa",
             "fiji",
             "honolulu",
-            "niue"
+            "niue",
+            "chatham_islands"
     };
 
     /** Formats {@code instant} in {@code zoneId} with {@code pattern}, or {@link #NONE} if it is null. */
